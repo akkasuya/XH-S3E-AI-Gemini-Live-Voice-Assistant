@@ -2,11 +2,10 @@
 #define AUDIO_IN_H
 
 #include <Arduino.h>
-#include "driver/i2s_pdm.h"   // ESP-IDF 5.x PDM API — requires Arduino-ESP32 core 3.x
+#include "driver/i2s_std.h"   // ESP-IDF 5.x standard I2S RX
 
 /**
- * Initialise the onboard PDM microphone on I2S_NUM_0.
- * PDM RX is only available on I2S0 on the ESP32-S3, hence the explicit port.
+ * Initialise the INMP441 microphone on I2S_NUM_0 in standard (Philips) RX mode.
  * @return true if the channel is live and delivering DMA data.
  */
 bool audioInBegin();
@@ -19,8 +18,6 @@ size_t audioInRead(int16_t* dst, size_t maxSamples, uint32_t timeoutMs);
 
 /**
  * Discard everything currently sitting in the RX DMA buffers.
- * Called when leaving the muted state so the resumed stream does not begin
- * with audio captured while the speaker was playing.
  */
 void audioInDrain();
 

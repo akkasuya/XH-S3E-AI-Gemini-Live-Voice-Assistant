@@ -1,0 +1,16 @@
+Display:[sd1306] scl=42 sda=41 
+
+Speaker (I2S, built into board):
+  DOUT → GPIO7
+  BCLK → GPIO15
+  LRCK → GPIO16
+
+Volume buttons: VOL+ → GPIO40  VOL- → GPIO39
+
+Microphone INMP441:
+  SCK  → GPIO5
+  WS   → GPIO4
+  DIN  → GPIO6
+
+LED: GPIO48
+

@@ -12,8 +12,8 @@
 #include "freertos/semphr.h"
 #include "freertos/task.h"
 
-#define OLED_SDA     5
-#define OLED_SCL     6
+#define OLED_SDA     41
+#define OLED_SCL     42
 #define OLED_WIDTH   128
 #define OLED_HEIGHT  64
 #define OLED_ADDR    0x3C

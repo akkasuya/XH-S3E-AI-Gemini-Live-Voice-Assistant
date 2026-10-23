@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#define CAMERA_ENABLED   0
+
 // =============================================================================
 // RIO — standalone Gemini Live voice assistant
 // Board: Seeed Studio XIAO ESP32-S3 Sense  +  MAX98357A I2S amplifier
@@ -18,16 +20,17 @@
 // D8/D9/D10 are also the XIAO's SPI pins, shared with the Sense board's microSD
 // slot — the SD card cannot be used alongside the speaker.
 // -----------------------------------------------------------------------------
-#define I2S_MIC_CLK_PIN     42   // onboard PDM mic clock
-#define I2S_MIC_DATA_PIN    41   // onboard PDM mic data
+#define I2S_MIC_BCLK_PIN     5   // INMP441 SCK
+#define I2S_MIC_WS_PIN       4   // INMP441 WS
+#define I2S_MIC_DATA_PIN     6   // INMP441 SD -> ESP32 DIN
 
-#define I2S_SPK_BCLK_PIN     7   // D8  -> MAX98357A BCLK
-#define I2S_SPK_LRC_PIN      8   // D9  -> MAX98357A LRC (word select)
-#define I2S_SPK_DIN_PIN      9   // D10 -> MAX98357A DIN
+#define I2S_SPK_BCLK_PIN    15   // built-in speaker BCLK
+#define I2S_SPK_LRC_PIN     16   // built-in speaker LRCK
+#define I2S_SPK_DIN_PIN      7   // built-in speaker DOUT (ESP32 DIN)
 
-#define AMP_SD_PIN           44  // D7  -> MAX98357A SD (shutdown / channel select)
+#define AMP_SD_PIN           -1  // no external amp shutdown pin on this board
 
-#define STATUS_LED_PIN      21   // onboard user LED (active LOW on XIAO)
+#define STATUS_LED_PIN      48   // onboard LED
 
 // -----------------------------------------------------------------------------
 // Camera (XIAO ESP32-S3 Sense, DVP parallel interface over the B2B connector)
@@ -158,7 +161,7 @@
 //
 // Set to 0 to leave SD floating and disable every GPIO write to it.
 // -----------------------------------------------------------------------------
-#define AMP_MUTE_ENABLE       1
+#define AMP_MUTE_ENABLE       0
 
 // Settling time after SD goes high, before the first sample is written. The part
 // needs a moment to leave shutdown and writing immediately clips the front of a

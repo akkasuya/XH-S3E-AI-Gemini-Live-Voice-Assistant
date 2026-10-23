@@ -2,7 +2,9 @@
 #include "ws_client.h"
 #include "app_state.h"
 #include "b64.h"
+#if CAMERA_ENABLED
 #include "camera.h"
+#endif
 #include "music.h"
 #include "news.h"
 #include "holiday.h"
@@ -501,6 +503,7 @@ static bool sendSetup() {
             "\"silence_duration_ms\":%d}},"
           "\"contextWindowCompression\":{\"triggerTokens\":104857,"
             "\"slidingWindow\":{\"targetTokens\":52428}},"
+#if CAMERA_ENABLED
           "\"tools\":[{\"functionDeclarations\":[{"
             "\"name\":\"" CAM_TOOL_NAME "\","
             "\"description\":\"Take one still photo with the assistant camera and "
@@ -511,6 +514,9 @@ static bool sendSetup() {
               "user out loud and wait for their answer before calling again.\","
             "\"parameters\":{\"type\":\"OBJECT\",\"properties\":{}}"
           "},{"
+#else
+          "\"tools\":[{\"functionDeclarations\":[{"
+#endif
             "\"name\":\"" MUSIC_TOOL_NAME "\","
             "\"description\":\"Play a song out loud on the assistant speaker. Give "
               "the song name the user asked for, plus the artist only if they named "
@@ -761,6 +767,7 @@ bool geminiServicePendingToolCall() {
         return true;
     }
 
+#if CAMERA_ENABLED
     if (strcmp(name, CAM_TOOL_NAME) != 0) {
         sendToolResponse(id, name, "unknown_tool");
         return true;
@@ -833,6 +840,11 @@ bool geminiServicePendingToolCall() {
                       "cannot see it.");
     }
     return true;
+#else
+    sendToolResponse(id, name, "unknown_tool");
+    return true;
+#endif
+
 }
 
 bool geminiPumpMusicNotices() {
