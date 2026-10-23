@@ -51,6 +51,7 @@
 // was speaking. Reported as muted= in [STAT]; both writer and reader live in
 // this file. See MIC_SKIP_GATED_UPLOAD.
 static std::atomic<uint32_t> sMutedChunks(0);
+static std::atomic<bool>     gSleeping(false);
 
 static TaskHandle_t hMic = NULL;
 static TaskHandle_t hSpk = NULL;
@@ -234,7 +235,7 @@ static void micTask(void* arg) {
         const size_t cleanN = frame;
         // Half duplex: discard everything captured while the speaker is live.
         const uint8_t st = gConv.load();
-        if (st != CONV_LISTENING || radioIsActive()) {
+        if (st != CONV_LISTENING || radioIsActive() || gSleeping.load()) {
             lastState = st;
             accumN = 0;
             continue;
@@ -651,6 +652,7 @@ void setup() {
     // Volume buttons (active LOW, external or internal pull-up).
     pinMode(40, INPUT_PULLUP);   // VOL+
     pinMode(39, INPUT_PULLUP);   // VOL-
+    pinMode(0, INPUT_PULLUP);    // BOOT
 
     // As early as possible. AMP_SD_PIN is U0RXD and its level before this runs
     // is not guaranteed, so until the pin is claimed the amplifier is enabled by
@@ -903,19 +905,32 @@ void loop() {
     oledSetNet(wifiIsConnected());   // no-op unless the state actually changed
 
     const uint8_t st = gConv.load();
-    if (st == CONV_LISTENING) {
-        ledSetColor(0, 64, 0);        // green = listening
+    // Sleep while not listening or radio playing.
+    gSleeping.store(st != CONV_LISTENING || radioIsActive());
+    if (gSleeping.load()) {
+        ledSetColor(64, 0, 0);        // red = sleep/standby/radio
     } else if (st == CONV_SPEAKING) {
         ledSetColor(64, 64, 0);       // yellow = speaking
     } else {
-        ledSetColor(64, 0, 0);        // red = standby/connecting
+        ledSetColor(0, 64, 0);        // green = listening
     }
 
     // Volume buttons (debounced edge detect).
-    static bool upPrev = false, downPrev = false;
+    static bool upPrev = false, downPrev = false, bootPrev = false;
     static uint32_t lastVolMs = 0;
     bool upNow = (digitalRead(40) == LOW);
     bool downNow = (digitalRead(39) == LOW);
+    bool bootNow = (digitalRead(0) == LOW);
+
+    // Wake from sleep on button press.
+    if (gSleeping.load() && ((upNow && !upPrev) || (downNow && !downPrev) || (bootNow && !bootPrev))) {
+        gSleeping.store(false);
+        radioStop();
+        gConv.store(CONV_LISTENING);
+        oledSetMode(OLED_MODE_LISTENING);
+        oledLog("AWAKE");
+    }
+
     if (millis() - lastVolMs > 200) {
         if (upNow && !upPrev) {
             audioOutSetVolume(audioOutGetVolume() + 0.1f);
@@ -930,6 +945,7 @@ void loop() {
     }
     upPrev = upNow;
     downPrev = downNow;
+    bootPrev = bootNow;
 
     // Simple serial commands for radio testing.
     if (Serial.available()) {
