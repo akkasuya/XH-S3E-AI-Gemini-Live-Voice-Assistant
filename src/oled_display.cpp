@@ -946,6 +946,143 @@ static void appendStr(char* out, uint16_t cap, uint16_t* n, const char* s) {
     }
 }
 
+/* Thai is romanised the same way Devanagari is: the OLED has no Thai font, so
+   every Thai code point is mapped to a short Latin string here. It is a
+   letter-for-letter romanisation, not a shaping engine, and it keeps the
+   caption readable instead of collapsing into spaces. */
+
+static const char* kThai[128] = {
+    NULL,
+    "k",
+    "kh",
+    "kh",
+    "kh",
+    "kh",
+    "kh",
+    "ng",
+    "ch",
+    "ch",
+    "ch",
+    "s",
+    "ch",
+    "y",
+    "d",
+    "t",
+    "th",
+    "th",
+    "th",
+    "n",
+    "d",
+    "t",
+    "th",
+    "th",
+    "th",
+    "n",
+    "b",
+    "p",
+    "ph",
+    "f",
+    "ph",
+    "f",
+    "ph",
+    "m",
+    "y",
+    "r",
+    "rue",
+    "l",
+    "lue",
+    "w",
+    "s",
+    "s",
+    "s",
+    "h",
+    "l",
+    "o",
+    "h",
+    "",
+    "a",
+    "a",
+    "aa",
+    "am",
+    "i",
+    "ii",
+    "ue",
+    "uee",
+    "u",
+    "uu",
+    "",
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    "baht",
+    "e",
+    "ae",
+    "o",
+    "ai",
+    "ai",
+    "a",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "",
+    "n",
+    "",
+    "",
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    ".",
+    ".",
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    NULL
+};
+
+
 /** Copy `in` to `out` as something Adafruit_GFX's 5x7 ASCII font can draw:
     Devanagari is romanised, ASCII passes through, and the few XML entities the
     JioSaavn catalogue returns are unescaped (titles arrive as
@@ -1035,6 +1172,18 @@ static uint16_t sanitise(const char* in, char* out, uint16_t cap) {
 
                 default:                         // DV_SKIP
                     break;
+            }
+            continue;
+        }
+
+        if (cp >= 0x0E00 && cp <= 0x0E7F) {
+            const char* th = kThai[cp - 0x0E00];
+            if (th != nullptr) {
+                // Thai is not Devanagari: no implicit-vowel bookkeeping, just
+                // emit the mapped Latin and move on.
+                pendingA = false;
+                consCp   = 0;
+                appendStr(out, cap, &n, th);
             }
             continue;
         }

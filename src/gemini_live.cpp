@@ -237,7 +237,7 @@ static void extractAudio(const uint8_t* buf, size_t len) {
                 // flag set and spkTask would cut this reply off the first time
                 // the buffer momentarily drained.
                 gTurnComplete.store(false);
-                Serial.println("[STATE] speaking");
+                // Serial.println("[STATE] speaking");
                 oledSetMode(OLED_MODE_SPEAKING);
                 // New utterance: drop whatever caption is still on screen so a
                 // reply never appears to continue the previous turn's sentence.

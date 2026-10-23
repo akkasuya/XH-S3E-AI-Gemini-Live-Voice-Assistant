@@ -77,7 +77,7 @@ bool audioOutBegin() {
     // starts empty at the top of each reply. A shorter queue means a smaller and
     // steadier delay for the canceller to track, and less end-to-end latency.
     // Going much below this risks underruns when spkTask is preempted.
-    chan_cfg.dma_desc_num  = 4;
+    chan_cfg.dma_desc_num  = 8;
     chan_cfg.dma_frame_num = 360;
 
     // i2s_new_channel(cfg, tx_handle, rx_handle) — TX is the SECOND argument.

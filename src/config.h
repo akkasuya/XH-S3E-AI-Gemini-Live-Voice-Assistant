@@ -120,7 +120,7 @@
 // costs about 120 ms more before the first word (at 1.66x, 500 ms of audio piles
 // up in ~300 ms of wall clock). Put it back to 300 if RIO feels slow to start and
 // under= stays near zero on your link.
-#define PLAYBACK_PREBUFFER_MS       500
+#define PLAYBACK_PREBUFFER_MS       1000
 #define PLAYBACK_PREBUFFER_BYTES    ((size_t)SPK_SAMPLE_RATE * 2 * PLAYBACK_PREBUFFER_MS / 1000)
 
 // Ceiling on the pre-roll wait. A reply shorter than the prebuffer, or one
@@ -129,7 +129,7 @@
 // Must stay above the time it takes to ACCUMULATE the prebuffer, or the ceiling
 // fires first and the pre-roll never actually happens: ~300 ms at 1.66x for the
 // 500 ms above, so 700 leaves margin without stranding a short reply.
-#define PLAYBACK_PREBUFFER_MAX_WAIT_MS  700
+#define PLAYBACK_PREBUFFER_MAX_WAIT_MS  1300
 
 // -----------------------------------------------------------------------------
 // Amplifier mute (MAX98357A SD on D7 / GPIO 44)
@@ -215,7 +215,7 @@
 //     plus SPEAK_TAIL_MS. No AEC, no barge-in, but no way to self-trigger
 //     either. Keep this as the fallback if AEC cannot be tuned on your unit.
 // -----------------------------------------------------------------------------
-#define FULL_DUPLEX          1
+#define FULL_DUPLEX          0
 
 // Only used when FULL_DUPLEX is 0.
 #define SPEAK_TAIL_MS        300
@@ -398,7 +398,7 @@
 #define LOG_WS_FRAMES     0   // [WS] --> tx / <-- rx, one line per message
 #define LOG_MIC_LEVEL     0   // [MIC] rms/erle/gate, every 2 s
 #define LOG_TRANSCRIPTS   1   // [YOU] / [RIO]
-#define LOG_TELEMETRY     1   // [STAT], every 10 s
+#define LOG_TELEMETRY     0   // [STAT], every 10 s
 
 // -----------------------------------------------------------------------------
 // Gemini Live endpoint

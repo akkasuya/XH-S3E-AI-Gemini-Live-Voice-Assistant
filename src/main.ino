@@ -18,6 +18,7 @@
 #include <esp_random.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp32-hal-rgb-led.h"
 
 #include "config.h"
 #include "app_state.h"
@@ -54,8 +55,16 @@ static TaskHandle_t hMic = NULL;
 static TaskHandle_t hSpk = NULL;
 static TaskHandle_t hNet = NULL;
 
+static void ledSetColor(uint8_t r, uint8_t g, uint8_t b) {
+    rgbLedWrite(STATUS_LED_PIN, r, g, b);
+}
+
 static void ledSet(bool on) {
-    digitalWrite(STATUS_LED_PIN, on ? LOW : HIGH);   // active LOW on the XIAO
+    if (on) {
+        ledSetColor(0, 64, 0);   // green-ish fallback
+    } else {
+        ledSetColor(64, 0, 0);   // red
+    }
 }
 
 /** Unrecoverable startup failure: blink fast forever rather than run half-built. */
@@ -65,8 +74,8 @@ static void halt(const char* why) {
     oledFatal("FATAL: %s", why);
     pinMode(STATUS_LED_PIN, OUTPUT);
     for (;;) {
-        ledSet(true);  delay(100);
-        ledSet(false); delay(100);
+        ledSetColor(64, 0, 0);  delay(100);
+        ledSetColor(0, 0, 0);   delay(100);
     }
 }
 
@@ -318,7 +327,7 @@ static void spkEndTurnIfDone() {
     // session-recycle check.
     if (gConv.compare_exchange_strong(expect, CONV_LISTENING)) {
         gTurnComplete.store(false);
-        Serial.println("[STATE] listening");
+        // Serial.println("[STATE] listening");
         oledSetMode(OLED_MODE_LISTENING);
     }
 #else
@@ -330,7 +339,7 @@ static void spkEndTurnIfDone() {
 
         expect = CONV_TAIL;
         gConv.compare_exchange_strong(expect, CONV_LISTENING);
-        Serial.println("[STATE] listening");
+        // Serial.println("[STATE] listening");
         oledSetMode(OLED_MODE_LISTENING);
     }
 #endif
@@ -557,7 +566,7 @@ static void netTask(void* arg) {
             if (geminiConnect()) {
                 backoff = 1000;
                 gConv.store(CONV_LISTENING);
-                Serial.println("[STATE] listening — say something");
+                // Serial.println("[STATE] listening — say something");
                 oledSetMode(OLED_MODE_LISTENING);
             } else {
                 gReconnects.fetch_add(1);
@@ -885,7 +894,13 @@ void loop() {
     oledSetNet(wifiIsConnected());   // no-op unless the state actually changed
 
     const uint8_t st = gConv.load();
-    ledSet(st == CONV_LISTENING || st == CONV_SPEAKING);
+    if (st == CONV_LISTENING) {
+        ledSetColor(0, 64, 0);        // green = listening
+    } else if (st == CONV_SPEAKING) {
+        ledSetColor(64, 64, 0);       // yellow = speaking
+    } else {
+        ledSetColor(64, 0, 0);        // red = standby/connecting
+    }
 
     if (LOG_TELEMETRY && millis() - lastTelemetry > 10000) {
         lastTelemetry = millis();
