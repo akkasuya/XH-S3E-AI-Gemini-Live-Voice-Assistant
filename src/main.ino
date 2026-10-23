@@ -919,10 +919,12 @@ void loop() {
     if (millis() - lastVolMs > 200) {
         if (upNow && !upPrev) {
             audioOutSetVolume(audioOutGetVolume() + 0.1f);
+            oledLog("VOL %d%%", (int)(audioOutGetVolume() * 100.0f + 0.5f));
             lastVolMs = millis();
         }
         if (downNow && !downPrev) {
             audioOutSetVolume(audioOutGetVolume() - 0.1f);
+            oledLog("VOL %d%%", (int)(audioOutGetVolume() * 100.0f + 0.5f));
             lastVolMs = millis();
         }
     }
