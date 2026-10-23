@@ -403,12 +403,11 @@
 // -----------------------------------------------------------------------------
 // Gemini Live endpoint
 // -----------------------------------------------------------------------------
-// Local gateway (plain ws://). Set GEMINI_USE_TLS to 1 and restore the Google
-// host/port/path to talk to the Gemini Live API directly over wss://.
-#define GEMINI_USE_TLS 0
-#define GEMINI_HOST   "192.168.1.5"
-#define GEMINI_PORT   8008
-#define GEMINI_PATH   "/media-stream"
+// Direct Google Gemini Live API over wss://.
+#define GEMINI_USE_TLS 1
+#define GEMINI_HOST   "generativelanguage.googleapis.com"
+#define GEMINI_PORT   443
+#define GEMINI_PATH   "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 #define GEMINI_MODEL  "models/gemini-3.1-flash-live-preview"
 #define GEMINI_VOICE  "Vega"
 
