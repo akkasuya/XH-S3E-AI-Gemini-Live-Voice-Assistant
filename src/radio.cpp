@@ -182,9 +182,6 @@ static uint32_t sPcmFrames = 0;
 static void pcmCallback(MP3FrameInfo &info, short *pcm, size_t len, void *ref) {
     if (len == 0) return;
     sPcmFrames++;
-    if (sPcmFrames % 50 == 0) {
-        Serial.printf("[RADIO] decoded frames=%u rate=%d ch=%d\n", (unsigned)sPcmFrames, info.samprate, info.nChans);
-    }
     sSrcRate = info.samprate > 0 ? info.samprate : 44100;
     int ch = info.nChans > 0 ? info.nChans : 1;
     size_t frames = len / ch;
