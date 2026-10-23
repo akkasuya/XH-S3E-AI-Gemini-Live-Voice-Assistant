@@ -254,6 +254,10 @@ bool WsClient::sendFrame(uint8_t opcode, const uint8_t* payload, size_t len) {
     return true;
 }
 
+bool WsClient::sendBinary(const uint8_t* data, size_t len) {
+    return sendFrame(0x2, data, len);
+}
+
 bool WsClient::sendText(const char* data, size_t len) {
     bool ok = sendFrame(OP_TEXT, (const uint8_t*)data, len);
     if (ok) {

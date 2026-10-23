@@ -419,12 +419,41 @@ static void parseControl(const uint8_t* buf, size_t len) {
     }
 }
 
+#if !GEMINI_USE_TLS
+// Local gateway mode: the server sends raw 24 kHz PCM as binary frames and no
+// JSON. It has no turnComplete, so the end of a reply is inferred from silence.
+#define RAW_TURN_GAP_MS 800
+static uint32_t sLastRawAudioMs = 0;
+
+static void pushRawPcm(const uint8_t* pcm, size_t len) {
+    sLastRawAudioMs = millis();
+    if (radioIsActive()) {
+        radioStop();
+    }
+    uint8_t expect = CONV_LISTENING;
+    if (gConv.compare_exchange_strong(expect, CONV_SPEAKING)) {
+        gTurnComplete.store(false);
+        oledSetMode(OLED_MODE_SPEAKING);
+        oledSubtitleClear();
+    }
+    if (xStreamBufferSend(gPcmOut, pcm, len, pdMS_TO_TICKS(2000)) < len) {
+        gDroppedChunks.fetch_add(1);
+    }
+}
+#endif
+
 static void onWsEvent(WsEvent ev, const uint8_t* payload, size_t len, void* user) {
     (void)user;
     switch (ev) {
         case WS_MESSAGE:
+#if !GEMINI_USE_TLS
+            if (ws.lastMessageBinary()) {
+                pushRawPcm(payload, len);
+            }
+#else
             extractAudio(payload, len);
             parseControl(payload, len);
+#endif
             break;
         case WS_OVERFLOW:
             gOverflows.fetch_add(1);
@@ -606,6 +635,11 @@ bool geminiConnect() {
         return false;
     }
 
+#if !GEMINI_USE_TLS
+    sSetupComplete = true;   // gateway has no setup handshake
+    return true;
+#endif
+
     if (!sendSetup()) {
         Serial.println("[GEMINI] failed to send setup");
         ws.disconnect();
@@ -641,15 +675,33 @@ bool geminiIsConnected() {
 }
 
 bool geminiPoll(uint32_t maxMs) {
+#if !GEMINI_USE_TLS
+    if (gConv.load() == CONV_SPEAKING && millis() - sLastRawAudioMs > RAW_TURN_GAP_MS) {
+        gTurnComplete.store(true);
+    }
+#endif
     return ws.poll(maxMs);
 }
 
 bool geminiSendRaw(const char* json, size_t len) {
+#if !GEMINI_USE_TLS
+    return ws.sendBinary((const uint8_t*)json, len);
+#else
     return ws.sendText(json, len);
+#endif
 }
 
 bool geminiBuildAudioMessage(const int16_t* pcm, size_t samples,
                              char* dst, size_t cap, size_t* outLen) {
+#if !GEMINI_USE_TLS
+    const size_t rawBytes = samples * sizeof(int16_t);
+    if (rawBytes > cap) {
+        return false;
+    }
+    memcpy(dst, pcm, rawBytes);
+    *outLen = rawBytes;
+    return true;
+#else
     static const char PRE[]  = "{\"realtimeInput\":{\"audio\":{\"data\":\"";
     // Rate is stringified from MIC_SAMPLE_RATE so the two can never drift apart.
     static const char POST[] = "\",\"mimeType\":\"audio/pcm;rate=" TOSTR(MIC_SAMPLE_RATE) "\"}}}";
@@ -673,10 +725,15 @@ bool geminiBuildAudioMessage(const int16_t* pcm, size_t samples,
     memcpy(dst + preLen + enc, POST, postLen);
     *outLen = preLen + enc + postLen;
     return true;
+#endif
 }
 
 /** Reply to a tool call. `result` must be a bare identifier — see isSafeJsonToken. */
 static bool sendToolResponse(const char* id, const char* name, const char* result) {
+#if !GEMINI_USE_TLS
+    (void)id; (void)name; (void)result;
+    return false;   // gateway accepts audio only; no JSON control messages
+#endif
     int n = snprintf(scratch, SCRATCH_BYTES,
         "{\"toolResponse\":{\"functionResponses\":[{"
           "\"id\":\"%s\",\"name\":\"%s\",\"response\":{\"result\":\"%s\"}"
@@ -701,6 +758,10 @@ static bool sendToolResponse(const char* id, const char* name, const char* resul
  * headline text wrapped in a sentence, on top of the topic itself.
  */
 static bool sendModelNote(const char* text) {
+#if !GEMINI_USE_TLS
+    (void)text;
+    return false;   // gateway accepts audio only
+#endif
     char esc[600];
     if (!jsonEscape(text, esc, sizeof(esc))) {
         return false;

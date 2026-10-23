@@ -52,6 +52,12 @@ public:
     /** Send one masked text frame. */
     bool sendText(const char* data, size_t len);
 
+    /** Send one masked binary frame. */
+    bool sendBinary(const uint8_t* data, size_t len);
+
+    /** True if the message last delivered via WS_MESSAGE was a binary frame. */
+    bool lastMessageBinary() const { return _msgOpcode == 0x2; }
+
     /**
      * Read available frames, reassemble, and fire the callback.
      * Returns false if the connection was lost.
