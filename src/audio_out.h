@@ -68,4 +68,8 @@ void audioOutTestTone(uint32_t freqHz, uint32_t ms);
 
 void audioOutEnd();
 
+/** Software volume for the speaker, 0.0..1.0. Applied in audioOutWriteMono(). */
+void audioOutSetVolume(float level);
+float audioOutGetVolume();
+
 #endif  // AUDIO_OUT_H

@@ -19,6 +19,8 @@ static int16_t silence[STAGE_MONO_SAMPLES];
 static bool ampOn    = false;
 static bool ampReady = false;
 
+static float sVolume = 1.0f;
+
 void audioOutAmpBegin() {
 #if AMP_MUTE_ENABLE
     if (ampReady) {
@@ -148,9 +150,11 @@ size_t audioOutWriteMono(const int16_t* mono, size_t samples, uint32_t timeoutMs
         }
 
         for (size_t i = 0; i < n; i++) {
-            int16_t s = mono[done + i];
-            stage[2 * i]     = s;   // left
-            stage[2 * i + 1] = s;   // right
+            int32_t s = (int32_t)((float)mono[done + i] * sVolume);
+            if (s > 32767) s = 32767;
+            else if (s < -32768) s = -32768;
+            stage[2 * i]     = (int16_t)s;   // left
+            stage[2 * i + 1] = (int16_t)s;   // right
         }
 
         size_t written = 0;
@@ -216,6 +220,16 @@ void audioOutTestTone(uint32_t freqHz, uint32_t ms) {
         }
         emitted += n;
     }
+}
+
+void audioOutSetVolume(float level) {
+    if (level < 0.0f) level = 0.0f;
+    if (level > 1.0f) level = 1.0f;
+    sVolume = level;
+}
+
+float audioOutGetVolume() {
+    return sVolume;
 }
 
 void audioOutEnd() {

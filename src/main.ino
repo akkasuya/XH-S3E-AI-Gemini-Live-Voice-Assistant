@@ -234,7 +234,7 @@ static void micTask(void* arg) {
         const size_t cleanN = frame;
         // Half duplex: discard everything captured while the speaker is live.
         const uint8_t st = gConv.load();
-        if (st != CONV_LISTENING) {
+        if (st != CONV_LISTENING || radioIsActive()) {
             lastState = st;
             accumN = 0;
             continue;
@@ -648,6 +648,10 @@ void setup() {
     pinMode(STATUS_LED_PIN, OUTPUT);
     ledSet(false);
 
+    // Volume buttons (active LOW, external or internal pull-up).
+    pinMode(40, INPUT_PULLUP);   // VOL+
+    pinMode(39, INPUT_PULLUP);   // VOL-
+
     // As early as possible. AMP_SD_PIN is U0RXD and its level before this runs
     // is not guaranteed, so until the pin is claimed the amplifier is enabled by
     // whatever the breakout's divider and the ROM leave on it.
@@ -906,6 +910,24 @@ void loop() {
     } else {
         ledSetColor(64, 0, 0);        // red = standby/connecting
     }
+
+    // Volume buttons (debounced edge detect).
+    static bool upPrev = false, downPrev = false;
+    static uint32_t lastVolMs = 0;
+    bool upNow = (digitalRead(40) == LOW);
+    bool downNow = (digitalRead(39) == LOW);
+    if (millis() - lastVolMs > 200) {
+        if (upNow && !upPrev) {
+            audioOutSetVolume(audioOutGetVolume() + 0.1f);
+            lastVolMs = millis();
+        }
+        if (downNow && !downPrev) {
+            audioOutSetVolume(audioOutGetVolume() - 0.1f);
+            lastVolMs = millis();
+        }
+    }
+    upPrev = upNow;
+    downPrev = downNow;
 
     // Simple serial commands for radio testing.
     if (Serial.available()) {
