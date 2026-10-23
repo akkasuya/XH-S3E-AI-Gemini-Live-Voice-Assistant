@@ -16,17 +16,21 @@ static const char WS_GUID[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
 
 WsClient::WsClient()
     : _host(nullptr), _path(nullptr), _rootCa(nullptr), _port(443),
+      _sock(&_tls), _useTls(true),
       _rxBuf(nullptr), _rxCap(0), _rxLen(0), _rxOverflow(false), _msgOpcode(0),
       _cb(nullptr), _cbUser(nullptr), _connected(false), _connectedAt(0) {}
 
 void WsClient::begin(const char* host, uint16_t port, const char* path,
-                     const char* rootCaPem, uint8_t* rxBuf, size_t rxCap) {
+                     const char* rootCaPem, uint8_t* rxBuf, size_t rxCap,
+                     bool useTls) {
     _host   = host;
     _port   = port;
     _path   = path;
     _rootCa = rootCaPem;
     _rxBuf  = rxBuf;
     _rxCap  = rxCap;
+    _useTls = useTls;
+    _sock   = useTls ? (WiFiClient*)&_tls : &_plain;
 }
 
 void WsClient::onEvent(WsCallback cb, void* user) {
@@ -36,7 +40,7 @@ void WsClient::onEvent(WsCallback cb, void* user) {
 
 void WsClient::fail(const char* why) {
     Serial.printf("[WS] %s\n", why);
-    _tls.stop();
+    _sock->stop();
     if (_connected) {
         _connected = false;
         if (_cb) {
@@ -50,15 +54,17 @@ bool WsClient::connect() {
     _rxOverflow = false;
     _msgOpcode  = 0;
 
-    if (_rootCa != nullptr) {
-        _tls.setCACert(_rootCa);
-    } else {
-        _tls.setInsecure();   // debugging only
+    if (_useTls) {
+        if (_rootCa != nullptr) {
+            _tls.setCACert(_rootCa);
+        } else {
+            _tls.setInsecure();   // debugging only
+        }
     }
-    _tls.setTimeout(15);      // seconds — applies to the underlying socket
+    _sock->setTimeout(15);    // seconds — applies to the underlying socket
 
     Serial.printf("[WS] connecting to %s:%u ...\n", _host, _port);
-    if (!_tls.connect(_host, _port)) {
+    if (!_sock->connect(_host, _port)) {
         Serial.println("[WS] TLS connect failed (check WiFi, time, or CA cert)");
         return false;
     }
@@ -86,7 +92,7 @@ bool WsClient::connect() {
     req += "Sec-WebSocket-Version: 13\r\n";
     req += "\r\n";
 
-    if (_tls.print(req) == 0) {
+    if (_sock->print(req) == 0) {
         fail("failed to send handshake");
         return false;
     }
@@ -98,16 +104,16 @@ bool WsClient::connect() {
     uint32_t start   = millis();
 
     while (millis() - start < 15000) {
-        if (!_tls.connected() && !_tls.available()) {
+        if (!_sock->connected() && !_sock->available()) {
             fail("connection closed during handshake");
             return false;
         }
-        if (!_tls.available()) {
+        if (!_sock->available()) {
             delay(5);
             continue;
         }
 
-        String line = _tls.readStringUntil('\n');
+        String line = _sock->readStringUntil('\n');
         line.trim();
 
         if (!sawStatus) {
@@ -134,15 +140,15 @@ bool WsClient::connect() {
         String body;
         uint32_t t0 = millis();
         while (millis() - t0 < 1000 && body.length() < 512) {
-            while (_tls.available() && body.length() < 512) {
-                body += (char)_tls.read();
+            while (_sock->available() && body.length() < 512) {
+                body += (char)_sock->read();
             }
             delay(10);
         }
         if (body.length()) {
             Serial.printf("[WS] body: %s\n", body.c_str());
         }
-        _tls.stop();
+        _sock->stop();
         return false;
     }
 
@@ -164,7 +170,7 @@ bool WsClient::connect() {
         if (acceptHdr != expect) {
             Serial.printf("[WS] bad Sec-WebSocket-Accept (got '%s', want '%s')\n",
                           acceptHdr.c_str(), expect);
-            _tls.stop();
+            _sock->stop();
             return false;
         }
     }
@@ -183,7 +189,7 @@ void WsClient::disconnect(uint16_t code) {
         uint8_t payload[2] = { (uint8_t)(code >> 8), (uint8_t)(code & 0xFF) };
         sendFrame(OP_CLOSE, payload, sizeof(payload));
     }
-    _tls.stop();
+    _sock->stop();
     if (_connected) {
         _connected = false;
         if (_cb) {
@@ -193,7 +199,7 @@ void WsClient::disconnect(uint16_t code) {
 }
 
 bool WsClient::sendFrame(uint8_t opcode, const uint8_t* payload, size_t len) {
-    if (!_tls.connected()) {
+    if (!_sock->connected()) {
         return false;
     }
 
@@ -222,7 +228,7 @@ bool WsClient::sendFrame(uint8_t opcode, const uint8_t* payload, size_t len) {
     memcpy(hdr + h, mask, 4);
     h += 4;
 
-    if (_tls.write(hdr, h) != h) {
+    if (_sock->write(hdr, h) != h) {
         fail("header write failed");
         return false;
     }
@@ -238,7 +244,7 @@ bool WsClient::sendFrame(uint8_t opcode, const uint8_t* payload, size_t len) {
         for (size_t i = 0; i < n; i++) {
             block[i] = payload[off + i] ^ mask[(off + i) & 3];
         }
-        if (_tls.write(block, n) != n) {
+        if (_sock->write(block, n) != n) {
             fail("payload write failed");
             return false;
         }
@@ -266,15 +272,15 @@ bool WsClient::readExact(uint8_t* dst, size_t n, uint32_t timeoutMs) {
         if (millis() - start > timeoutMs) {
             return false;
         }
-        int avail = _tls.available();
+        int avail = _sock->available();
         if (avail <= 0) {
-            if (!_tls.connected()) {
+            if (!_sock->connected()) {
                 return false;
             }
             delay(2);
             continue;
         }
-        int r = _tls.read(dst + got, n - got);
+        int r = _sock->read(dst + got, n - got);
         if (r > 0) {
             got += (size_t)r;
             start = millis();   // reset the clock on progress
@@ -416,13 +422,13 @@ bool WsClient::poll(uint32_t maxMs) {
     if (!_connected) {
         return false;
     }
-    if (!_tls.connected() && !_tls.available()) {
+    if (!_sock->connected() && !_sock->available()) {
         fail("connection lost");
         return false;
     }
 
     uint32_t start = millis();
-    while (_tls.available() > 0) {
+    while (_sock->available() > 0) {
         if (!readFrame(10000)) {
             return _connected;   // readFrame reports/handles the failure
         }

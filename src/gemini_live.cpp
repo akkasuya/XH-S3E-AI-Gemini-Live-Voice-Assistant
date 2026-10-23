@@ -464,7 +464,7 @@ bool geminiBegin() {
     path += GEMINI_API_KEY;
 
     ws.begin(GEMINI_HOST, GEMINI_PORT, path.c_str(), GTS_ROOT_R1_PEM,
-             gWsRxBuf, WS_RX_ASSEMBLY_BYTES);
+             gWsRxBuf, WS_RX_ASSEMBLY_BYTES, GEMINI_USE_TLS);
     ws.onEvent(onWsEvent, nullptr);
     return true;
 }

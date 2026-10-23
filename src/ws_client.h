@@ -2,6 +2,7 @@
 #define WS_CLIENT_H
 
 #include <Arduino.h>
+#include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 
 // Minimal RFC 6455 client over TLS.
@@ -37,7 +38,8 @@ public:
      * @param rxBuf caller-owned reassembly buffer (PSRAM), must outlive the client.
      */
     void begin(const char* host, uint16_t port, const char* path,
-               const char* rootCaPem, uint8_t* rxBuf, size_t rxCap);
+               const char* rootCaPem, uint8_t* rxBuf, size_t rxCap,
+               bool useTls = true);
 
     void onEvent(WsCallback cb, void* user);
 
@@ -67,6 +69,9 @@ private:
     void fail(const char* why);
 
     WiFiClientSecure _tls;
+    WiFiClient       _plain;      // ws:// (no TLS)
+    WiFiClient*      _sock;       // &_tls or &_plain, chosen in begin()
+    bool             _useTls;
     const char* _host;
     const char* _path;
     const char* _rootCa;
