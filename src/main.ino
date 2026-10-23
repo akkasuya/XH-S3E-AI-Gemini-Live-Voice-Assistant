@@ -28,6 +28,7 @@
 #include "wifi_mgr.h"
 #include "gemini_live.h"
 #include "music.h"
+#include "radio.h"
 #include "news.h"
 #include "holiday.h"
 #include "memmon.h"
@@ -872,6 +873,10 @@ void setup() {
         Serial.println("[BOOT] holiday lookup unavailable");
     }
 
+    if (!radioBegin()) {
+        Serial.println("[BOOT] radio unavailable");
+    }
+
     // Audio tasks on core 1 (with the Arduino loop); the network task on core 0
     // alongside the WiFi/lwIP stacks, so TLS jitter stays off the audio core.
     xTaskCreatePinnedToCore(spkTask, "spk", 4096, NULL, 6, &hSpk, 1);
@@ -900,6 +905,28 @@ void loop() {
         ledSetColor(64, 64, 0);       // yellow = speaking
     } else {
         ledSetColor(64, 0, 0);        // red = standby/connecting
+    }
+
+    // Simple serial commands for radio testing.
+    if (Serial.available()) {
+        static char cmd[64];
+        static size_t ci = 0;
+        char ch = (char)Serial.read();
+        if (ch == '\n' || ch == '\r') {
+            if (ci > 0) {
+                cmd[ci] = '\0';
+                if (strncmp(cmd, "radio ", 6) == 0) {
+                    radioRequest(cmd + 6);
+                } else if (strcmp(cmd, "radiostop") == 0) {
+                    radioStop();
+                } else if (strcmp(cmd, "radiolist") == 0) {
+                    Serial.println("coolfh greenwave efm looktungnetwork");
+                }
+                ci = 0;
+            }
+        } else if (ci + 1 < sizeof(cmd)) {
+            cmd[ci++] = ch;
+        }
     }
 
     if (LOG_TELEMETRY && millis() - lastTelemetry > 10000) {

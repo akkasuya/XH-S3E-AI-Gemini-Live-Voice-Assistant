@@ -782,6 +782,8 @@
 // Tool names. Must match the declarations sent in setup.
 #define MUSIC_TOOL_NAME       "play_song"
 #define MUSIC_STOP_TOOL_NAME  "stop_song"
+#define RADIO_TOOL_NAME       "play_radio"
+#define RADIO_STOP_TOOL_NAME  "stop_radio"
 
 // Longest song name accepted from the model. Sized for a title plus an artist
 // ("gehra hua arijit singh"), not for a sentence.

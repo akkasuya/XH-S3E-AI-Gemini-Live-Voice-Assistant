@@ -6,6 +6,7 @@
 #include "camera.h"
 #endif
 #include "music.h"
+#include "radio.h"
 #include "news.h"
 #include "holiday.h"
 #include "wifi_mgr.h"
@@ -352,6 +353,9 @@ static void parseControl(const uint8_t* buf, size_t len) {
             if (q == nullptr) {
                 q = call["args"]["state"];   // get_holidays names its argument differently
             }
+            if (q == nullptr) {
+                q = call["args"]["station"]; // play_radio names its argument differently
+            }
             if (q != nullptr) {
                 snprintf(sPendingCallQuery, sizeof(sPendingCallQuery), "%s", q);
             }
@@ -536,6 +540,19 @@ static bool sendSetup() {
               "when the user asks to stop, pause or turn the music off. Speaking to "
               "the assistant already interrupts playback on its own, so this is not "
               "needed merely because the user said something.\","
+            "\"parameters\":{\"type\":\"OBJECT\",\"properties\":{}}"
+          "},{"
+            "\"name\":\"" RADIO_TOOL_NAME "\","
+            "\"description\":\"Play an internet radio station out loud. Stations: "
+              "coolfh, greenwave, efm, looktungnetwork. Use when the user asks for "
+              "radio.\","
+            "\"parameters\":{\"type\":\"OBJECT\",\"properties\":{"
+              "\"station\":{\"type\":\"STRING\",\"description\":\"Station name: "
+                "coolfh, greenwave, efm, or looktungnetwork\"}},"
+              "\"required\":[\"station\"]}"
+          "},{"
+            "\"name\":\"" RADIO_STOP_TOOL_NAME "\","
+            "\"description\":\"Stop the radio that is currently playing.\","
             "\"parameters\":{\"type\":\"OBJECT\",\"properties\":{}}"
           "},{"
             "\"name\":\"" NEWS_TOOL_NAME "\","
@@ -733,6 +750,27 @@ bool geminiServicePendingToolCall() {
     if (strcmp(name, MUSIC_STOP_TOOL_NAME) == 0) {
         const bool wasPlaying = musicIsActive();
         musicStop();
+        sendToolResponse(id, name, wasPlaying ? "stopped" : "nothing_playing");
+        return true;
+    }
+
+    // --- Radio -----------------------------------------------------------
+    if (strcmp(name, RADIO_TOOL_NAME) == 0) {
+        if (sPendingCallQuery[0] == '\0') {
+            sendToolResponse(id, name, "no_station");
+            return true;
+        }
+        // reuse sPendingCallQuery? It holds station? Need check how sPendingCallQuery set.
+        musicStop();
+        radioRequest(sPendingCallQuery);
+        oledTriggerTool(OLED_TOOL_MUSIC);
+        sendToolResponse(id, name, "playing");
+        return true;
+    }
+
+    if (strcmp(name, RADIO_STOP_TOOL_NAME) == 0) {
+        const bool wasPlaying = radioIsActive();
+        radioStop();
         sendToolResponse(id, name, wasPlaying ? "stopped" : "nothing_playing");
         return true;
     }
