@@ -548,8 +548,8 @@ static bool sendSetup() {
               "radio.\","
             "\"parameters\":{\"type\":\"OBJECT\",\"properties\":{"
               "\"station\":{\"type\":\"STRING\",\"description\":\"Station name: "
-                "coolfh, greenwave, efm, or looktungnetwork\"}},"
-              "\"required\":[\"station\"]}"
+                "coolfh, greenwave, efm, or looktungnetwork. Optional; defaults to "
+                "coolfh\"}}"
           "},{"
             "\"name\":\"" RADIO_STOP_TOOL_NAME "\","
             "\"description\":\"Stop the radio that is currently playing.\","
@@ -757,12 +757,11 @@ bool geminiServicePendingToolCall() {
     // --- Radio -----------------------------------------------------------
     if (strcmp(name, RADIO_TOOL_NAME) == 0) {
         if (sPendingCallQuery[0] == '\0') {
-            sendToolResponse(id, name, "no_station");
-            return true;
+            radioRequest("coolfh");
+        } else {
+            radioRequest(sPendingCallQuery);
         }
-        // reuse sPendingCallQuery? It holds station? Need check how sPendingCallQuery set.
         musicStop();
-        radioRequest(sPendingCallQuery);
         oledTriggerTool(OLED_TOOL_MUSIC);
         sendToolResponse(id, name, "playing");
         return true;
