@@ -549,7 +549,7 @@ static bool sendSetup() {
             "\"parameters\":{\"type\":\"OBJECT\",\"properties\":{"
               "\"station\":{\"type\":\"STRING\",\"description\":\"Station name: "
                 "coolfh, greenwave, efm, or looktungnetwork. Optional; defaults to "
-                "coolfh\"}}"
+                "coolfh\"}}}"
           "},{"
             "\"name\":\"" RADIO_STOP_TOOL_NAME "\","
             "\"description\":\"Stop the radio that is currently playing.\","
