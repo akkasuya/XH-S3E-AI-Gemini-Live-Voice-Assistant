@@ -407,7 +407,7 @@
 #define GEMINI_PORT   443
 #define GEMINI_PATH   "/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 #define GEMINI_MODEL  "models/gemini-3.1-flash-live-preview"
-#define GEMINI_VOICE  "Pegasus"
+#define GEMINI_VOICE  "Ursa"
 
 // Server-side VAD tuning. This is what performs turn-taking and barge-in: with
 // the mic open during playback, Gemini detecting speech mid-reply is exactly
